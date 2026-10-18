@@ -7,6 +7,7 @@ Security and robustness audit of [`thombashi/pathvalidate`](https://github.com/t
 The upstream test suite still passes in full (4184 → 4224, no existing test modified or deleted).
 
 📄 **[Read the report](https://linluozi.github.io/pathvalidate-sanitizer-audit/)** — charts, before/after tables, and the risk list.
+Also available as Markdown: [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md).
 
 ---
 
