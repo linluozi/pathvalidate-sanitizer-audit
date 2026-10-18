@@ -1,0 +1,11 @@
+include LICENSE
+include README.rst
+include tox.ini
+include docs/pages/introduction/summary.txt
+include */py.typed
+
+recursive-include test *
+recursive-include requirements *
+
+global-exclude __pycache__/*
+global-exclude *.pyc

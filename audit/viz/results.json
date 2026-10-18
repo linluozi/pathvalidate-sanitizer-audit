@@ -1,0 +1,545 @@
+{
+  "patched": {
+    "A_backslash": {
+      "ok": true,
+      "value": "a\\b"
+    },
+    "A_backspace": {
+      "ok": true,
+      "value": "a\\bb"
+    },
+    "A_groupref": {
+      "ok": true,
+      "value": "ax\\1b"
+    },
+    "A_ord_reemit": {
+      "ok": true,
+      "value": [
+        97,
+        92,
+        98,
+        98
+      ]
+    },
+    "A_reemit": {
+      "ok": true,
+      "value": "a\\g<0>b"
+    },
+    "A_still_valid": {
+      "ok": true,
+      "value": false
+    },
+    "B_rows": [
+      {
+        "in": "C:x.txt",
+        "in_abs": false,
+        "out": "C:x.txt",
+        "out_abs": false
+      },
+      {
+        "in": "D:payload.exe",
+        "in_abs": false,
+        "out": "D:payload.exe",
+        "out_abs": false
+      },
+      {
+        "in": "C:.\\y.txt",
+        "in_abs": false,
+        "out": "C:y.txt",
+        "out_abs": false
+      },
+      {
+        "in": "C:..\\..\\evil.txt",
+        "in_abs": false,
+        "out": "C:..\\..\\evil.txt",
+        "out_abs": false
+      }
+    ],
+    "B_universal": [
+      {
+        "in": "C:x.txt",
+        "vin": "accept",
+        "vout": "accept"
+      },
+      {
+        "in": "D:payload.exe",
+        "vin": "accept",
+        "vout": "accept"
+      },
+      {
+        "in": "C:..\\..\\evil.txt",
+        "vin": "accept",
+        "vout": "accept"
+      },
+      {
+        "in": "C:.\\y.txt",
+        "vin": "accept",
+        "vout": "accept"
+      }
+    ],
+    "C_rows": [
+      {
+        "in": "!!!",
+        "out": "ab",
+        "repl": "ab"
+      },
+      {
+        "in": "!!!",
+        "out": "aa",
+        "repl": "aa"
+      },
+      {
+        "in": "!!!",
+        "out": ".",
+        "repl": "."
+      },
+      {
+        "in": "a---b",
+        "out": "a-b",
+        "repl": "-"
+      }
+    ],
+    "guard_abs": [
+      {
+        "in": "C:\\\\x.txt",
+        "out": "C:\\x.txt",
+        "platform": "windows"
+      },
+      {
+        "in": "C:/x.txt",
+        "out": "C:\\x.txt",
+        "platform": "windows"
+      },
+      {
+        "in": "/a/b",
+        "out": "/a/b",
+        "platform": "linux"
+      }
+    ],
+    "replacement_corpus": [
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          98
+        ],
+        "out_show": "ab",
+        "repl_len": 0,
+        "repl_show": ""
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          95,
+          98
+        ],
+        "out_show": "a_b",
+        "repl_len": 1,
+        "repl_show": "_"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          45,
+          98
+        ],
+        "out_show": "a-b",
+        "repl_len": 1,
+        "repl_show": "-"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          98
+        ],
+        "out_show": "a\\\\b",
+        "repl_len": 1,
+        "repl_show": "\\\\"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          92,
+          98
+        ],
+        "out_show": "a\\\\\\\\b",
+        "repl_len": 2,
+        "repl_show": "\\\\\\\\"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          98,
+          98
+        ],
+        "out_show": "a\\\\bb",
+        "repl_len": 2,
+        "repl_show": "\\\\b"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          116,
+          98
+        ],
+        "out_show": "a\\\\tb",
+        "repl_len": 2,
+        "repl_show": "\\\\t"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          103,
+          60,
+          48,
+          62,
+          98
+        ],
+        "out_show": "a\\\\g<0>b",
+        "repl_len": 5,
+        "repl_show": "\\\\g<0>"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          120,
+          92,
+          49,
+          98
+        ],
+        "out_show": "ax\\\\1b",
+        "repl_len": 3,
+        "repl_show": "x\\\\1"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          120,
+          48,
+          48,
+          98
+        ],
+        "out_show": "a\\\\x00b",
+        "repl_len": 4,
+        "repl_show": "\\\\x00"
+      }
+    ],
+    "resolved": "E:\\WorkBuddy-Work\\WorkBuddy-0\\_viz\\patched\\pathvalidate\\__init__.py",
+    "sweep_invalid_output": {
+      "linux": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "macos": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "posix": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "universal": {
+        "documented_design": 3,
+        "drive_relative": 0,
+        "ok": 14,
+        "total": 17
+      },
+      "windows": {
+        "documented_design": 0,
+        "drive_relative": 0,
+        "ok": 17,
+        "total": 17
+      }
+    },
+    "version": "3.3.1"
+  },
+  "unpatched": {
+    "A_backslash": {
+      "error": "PatternError",
+      "is_value_error": false,
+      "msg": "bad escape (end of pattern) at position 0",
+      "ok": false
+    },
+    "A_backspace": {
+      "ok": true,
+      "value": "a\bb"
+    },
+    "A_groupref": {
+      "error": "PatternError",
+      "is_value_error": false,
+      "msg": "invalid group reference 1 at position 2",
+      "ok": false
+    },
+    "A_ord_reemit": {
+      "ok": true,
+      "value": [
+        97,
+        8,
+        98
+      ]
+    },
+    "A_reemit": {
+      "ok": true,
+      "value": "a?b"
+    },
+    "A_still_valid": {
+      "ok": true,
+      "value": false
+    },
+    "B_rows": [
+      {
+        "in": "C:x.txt",
+        "in_abs": false,
+        "out": "C:\\x.txt",
+        "out_abs": true
+      },
+      {
+        "in": "D:payload.exe",
+        "in_abs": false,
+        "out": "D:\\payload.exe",
+        "out_abs": true
+      },
+      {
+        "in": "C:.\\y.txt",
+        "in_abs": false,
+        "out": "C:\\y.txt",
+        "out_abs": true
+      },
+      {
+        "in": "C:..\\..\\evil.txt",
+        "in_abs": false,
+        "out": "C:\\..\\..\\evil.txt",
+        "out_abs": true
+      }
+    ],
+    "B_universal": [
+      {
+        "in": "C:x.txt",
+        "vin": "accept",
+        "vout": "MALFORMED_ABS_PATH"
+      },
+      {
+        "in": "D:payload.exe",
+        "vin": "accept",
+        "vout": "MALFORMED_ABS_PATH"
+      },
+      {
+        "in": "C:..\\..\\evil.txt",
+        "vin": "accept",
+        "vout": "MALFORMED_ABS_PATH"
+      },
+      {
+        "in": "C:.\\y.txt",
+        "vin": "accept",
+        "vout": "MALFORMED_ABS_PATH"
+      }
+    ],
+    "C_rows": [
+      {
+        "in": "!!!",
+        "out": "ababab",
+        "repl": "ab"
+      },
+      {
+        "in": "!!!",
+        "out": "aa",
+        "repl": "aa"
+      },
+      {
+        "in": "!!!",
+        "out": ".",
+        "repl": "."
+      },
+      {
+        "in": "a---b",
+        "out": "a-b",
+        "repl": "-"
+      }
+    ],
+    "guard_abs": [
+      {
+        "in": "C:\\\\x.txt",
+        "out": "C:\\x.txt",
+        "platform": "windows"
+      },
+      {
+        "in": "C:/x.txt",
+        "out": "C:\\x.txt",
+        "platform": "windows"
+      },
+      {
+        "in": "/a/b",
+        "out": "/a/b",
+        "platform": "linux"
+      }
+    ],
+    "replacement_corpus": [
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          98
+        ],
+        "out_show": "ab",
+        "repl_len": 0,
+        "repl_show": ""
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          95,
+          98
+        ],
+        "out_show": "a_b",
+        "repl_len": 1,
+        "repl_show": "_"
+      },
+      {
+        "class": "literal",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          45,
+          98
+        ],
+        "out_show": "a-b",
+        "repl_len": 1,
+        "repl_show": "-"
+      },
+      {
+        "class": "crash",
+        "error": "PatternError",
+        "repl_len": 1,
+        "repl_show": "\\\\"
+      },
+      {
+        "class": "corrupt",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          92,
+          98
+        ],
+        "out_show": "a\\\\b",
+        "repl_len": 2,
+        "repl_show": "\\\\\\\\"
+      },
+      {
+        "class": "corrupt",
+        "ctrl_bytes": 1,
+        "ords": [
+          97,
+          8,
+          98
+        ],
+        "out_show": "a\\x08b",
+        "repl_len": 2,
+        "repl_show": "\\\\b"
+      },
+      {
+        "class": "corrupt",
+        "ctrl_bytes": 1,
+        "ords": [
+          97,
+          9,
+          98
+        ],
+        "out_show": "a\\tb",
+        "repl_len": 2,
+        "repl_show": "\\\\t"
+      },
+      {
+        "class": "noop",
+        "ctrl_bytes": 0,
+        "ords": [
+          97,
+          63,
+          98
+        ],
+        "out_show": "a?b",
+        "repl_len": 5,
+        "repl_show": "\\\\g<0>"
+      },
+      {
+        "class": "crash",
+        "error": "PatternError",
+        "repl_len": 3,
+        "repl_show": "x\\\\1"
+      },
+      {
+        "class": "crash",
+        "error": "PatternError",
+        "repl_len": 4,
+        "repl_show": "\\\\x00"
+      }
+    ],
+    "resolved": "E:\\WorkBuddy-Work\\WorkBuddy-0\\_viz\\unpatched\\pathvalidate\\__init__.py",
+    "sweep_invalid_output": {
+      "linux": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "macos": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "posix": {
+        "documented_design": 1,
+        "drive_relative": 0,
+        "ok": 16,
+        "total": 17
+      },
+      "universal": {
+        "documented_design": 3,
+        "drive_relative": 5,
+        "ok": 9,
+        "total": 17
+      },
+      "windows": {
+        "documented_design": 0,
+        "drive_relative": 0,
+        "ok": 17,
+        "total": 17
+      }
+    },
+    "version": "3.3.1"
+  }
+}

@@ -1,0 +1,454 @@
+--- a/pathvalidate/_common.py
++++ b/pathvalidate/_common.py
+@@ -110,16 +110,40 @@
+         raise InvalidCharError(f"unprintable character found: {match_list}")
+ 
+ 
++def escape_replacement_text(replacement_text: str) -> str:
++    """Escape a string so that it is treated as literal text by :py:meth:`re.Pattern.sub`.
++
++    ``re.sub`` expands backslash escapes and group references (``\\1``, ``\\g<0>``)
++    in its replacement argument.  ``replacement_text`` is a plain literal, so any
++    escape sequence in it must reach the output unchanged instead of being
++    interpreted.  Using an unescaped value either raises ``re.error`` (which is not
++    a :py:class:`ValueError` and so escapes the documented error contract) or
++    silently emits a different character (e.g. ``"\\\\b"`` becomes a backspace).
++
++    Args:
++        replacement_text:
++            Replacement text as specified by the caller.
++
++    Returns:
++        str: The replacement text with substitution escapes neutralized.
++    """
++
++    if not replacement_text:
++        return replacement_text
++
++    return replacement_text.replace("\\", "\\\\")
++
++
+ def replace_unprintable_char(text: str, replacement_text: str = "") -> str:
+     try:
+-        return __RE_UNPRINTABLE_CHARS.sub(replacement_text, text)
++        return __RE_UNPRINTABLE_CHARS.sub(escape_replacement_text(replacement_text), text)
+     except (TypeError, AttributeError):
+         raise TypeError("text must be a string")
+ 
+ 
+ def replace_ansi_escape(text: str, replacement_text: str = "") -> str:
+     try:
+-        return __RE_ANSI_ESCAPE.sub(replacement_text, text)
++        return __RE_ANSI_ESCAPE.sub(escape_replacement_text(replacement_text), text)
+     except (TypeError, AttributeError):
+         raise TypeError("text must be a string")
+ 
+--- a/pathvalidate/_filename.py
++++ b/pathvalidate/_filename.py
+@@ -12,7 +12,14 @@
+ from typing import Final, Optional
+ 
+ from ._base import AbstractSanitizer, AbstractValidator, BaseFile, BaseValidator
+-from ._common import findall_to_str, is_nt_abspath, to_str, truncate_str, validate_pathtype
++from ._common import (
++    escape_replacement_text,
++    findall_to_str,
++    is_nt_abspath,
++    to_str,
++    truncate_str,
++    validate_pathtype,
++)
+ from ._const import DEFAULT_MIN_LEN, INVALID_CHAR_ERR_MSG_TMPL, Platform
+ from ._types import PathType, PlatformType
+ from .error import ErrorAttrKey, ErrorReason, InvalidCharError, ValidationError
+@@ -76,7 +83,9 @@
+                 return self._null_value_handler(e)  # type: ignore
+             raise
+ 
+-        sanitized_filename = self._sanitize_regexp.sub(replacement_text, str(value))
++        sanitized_filename = self._sanitize_regexp.sub(
++            escape_replacement_text(replacement_text), str(value)
++        )
+         sanitized_filename = truncate_str(sanitized_filename, self._fs_encoding, self.max_len)
+ 
+         try:
+@@ -86,7 +95,9 @@
+                 replacement_word = self._reserved_name_handler(e)
+                 if e.reserved_name != replacement_word:
+                     sanitized_filename = re.sub(
+-                        re.escape(e.reserved_name), replacement_word, sanitized_filename
++                        re.escape(e.reserved_name),
++                        escape_replacement_text(replacement_word),
++                        sanitized_filename,
+                     )
+             elif e.reason == ErrorReason.INVALID_CHARACTER and self._is_windows(
+                 include_universal=True
+--- a/pathvalidate/_filepath.py
++++ b/pathvalidate/_filepath.py
+@@ -13,7 +13,13 @@
+ from typing import Final, Optional
+ 
+ from ._base import AbstractSanitizer, AbstractValidator, BaseFile, BaseValidator
+-from ._common import findall_to_str, is_nt_abspath, to_str, validate_pathtype
++from ._common import (
++    escape_replacement_text,
++    findall_to_str,
++    is_nt_abspath,
++    to_str,
++    validate_pathtype,
++)
+ from ._const import _NTFS_RESERVED_FILE_NAMES, DEFAULT_MIN_LEN, INVALID_CHAR_ERR_MSG_TMPL, Platform
+ from ._filename import FileNameSanitizer, FileNameValidator
+ from ._types import PathType, PlatformType
+@@ -92,13 +98,22 @@
+ 
+         unicode_filepath = to_str(value)
+         drive, unicode_filepath = self.__split_drive(unicode_filepath)
+-        unicode_filepath = self._sanitize_regexp.sub(replacement_text, unicode_filepath)
++        # A drive-relative path (e.g. "C:foo") is not an absolute path.  Joining the
++        # drive with a separator would silently turn it into an absolute path
++        # ("C:\foo"), which changes the meaning of the path and makes the result
++        # invalid for platform-independent validation.
++        is_drive_relative = bool(drive) and bool(unicode_filepath)
++        if is_drive_relative:
++            is_drive_relative = unicode_filepath[0] not in ("/", "\\")
++        unicode_filepath = self._sanitize_regexp.sub(
++            escape_replacement_text(replacement_text), unicode_filepath
++        )
+         if self.__normalize and unicode_filepath:
+             unicode_filepath = os.path.normpath(unicode_filepath)
+         sanitized_path = unicode_filepath
+ 
+         sanitized_entries: list[str] = []
+-        if drive:
++        if drive and not is_drive_relative:
+             sanitized_entries.append(drive)
+         for entry in sanitized_path.replace("\\", "/").split("/"):
+             if entry in _NTFS_RESERVED_FILE_NAMES:
+@@ -116,6 +131,8 @@
+             sanitized_entries.append(sanitized_entry)
+ 
+         sanitized_path = self.__get_path_separator().join(sanitized_entries)
++        if drive and is_drive_relative:
++            sanitized_path = drive + sanitized_path
+         try:
+             self._validator.validate(sanitized_path)
+         except ValidationError as e:
+--- a/pathvalidate/_ltsv.py
++++ b/pathvalidate/_ltsv.py
+@@ -5,7 +5,7 @@
+ import re
+ from typing import Final
+ 
+-from ._common import to_str, validate_pathtype
++from ._common import escape_replacement_text, to_str, validate_pathtype
+ from .error import InvalidCharError
+ 
+ 
+@@ -41,4 +41,4 @@
+ 
+     validate_pathtype(label, allow_whitespaces=False)
+ 
+-    return __RE_INVALID_LTSV_LABEL.sub(replacement_text, to_str(label))
++    return __RE_INVALID_LTSV_LABEL.sub(escape_replacement_text(replacement_text), to_str(label))
+--- a/pathvalidate/_symbol.py
++++ b/pathvalidate/_symbol.py
+@@ -6,7 +6,7 @@
+ from collections.abc import Sequence
+ from typing import Final
+ 
+-from ._common import ascii_symbols, to_str, unprintable_ascii_chars
++from ._common import ascii_symbols, escape_replacement_text, to_str, unprintable_ascii_chars
+ from .error import InvalidCharError
+ 
+ 
+@@ -77,7 +77,7 @@
+         regexp = __RE_SYMBOL
+ 
+     try:
+-        new_text = regexp.sub(replacement_text, to_str(text))
++        new_text = regexp.sub(escape_replacement_text(replacement_text), to_str(text))
+     except TypeError:
+         raise TypeError("text must be a string")
+ 
+@@ -85,7 +85,15 @@
+         return new_text
+ 
+     if is_replace_consecutive_chars:
+-        new_text = re.sub(f"{re.escape(replacement_text)}+", replacement_text, new_text)
++        # The quantifier must apply to the whole replacement text.  Without the
++        # grouping it binds to the last character only, so a multi-character
++        # replacement such as "ab" never matches its own repetitions ("ababab"
++        # stayed unchanged instead of collapsing to "ab").
++        new_text = re.sub(
++            f"(?:{re.escape(replacement_text)})+",
++            escape_replacement_text(replacement_text),
++            new_text,
++        )
+ 
+     if is_strip:
+         new_text = new_text.strip(replacement_text)
+--- a/test/test_common.py
++++ b/test/test_common.py
+@@ -57,3 +57,57 @@
+         value = "test"
+         ansi_value = tcolor(value, color="ffffff", bg_color="111111", styles=["bold"])
+         assert replace_ansi_escape(ansi_value) == value
++
++
++class Test_escape_replacement_text:
++    """Replacement text must be inserted literally.
++
++    ``re.sub`` interprets backslash escapes and group references in its replacement
++    argument. Passing caller-supplied text straight through either raised
++    ``re.error`` (a bare ``Exception``, outside the documented ``ValueError``
++    contract) or silently emitted a different character (``"\\b"`` became a
++    backspace). See :py:func:`pathvalidate._common.escape_replacement_text`.
++    """
++
++    @pytest.mark.parametrize(
++        ["replacement_text", "expected"],
++        [
++            ["", ""],
++            ["_", "_"],
++            ["-", "-"],
++            ["\\", "\\\\"],
++            ["\\b", "\\\\b"],
++            ["\\g<0>", "\\\\g<0>"],
++            ["x\\1", "x\\\\1"],
++            ["a\\\\b", "a\\\\\\\\b"],
++        ],
++    )
++    def test_normal(self, replacement_text, expected):
++        from pathvalidate._common import escape_replacement_text
++
++        assert escape_replacement_text(replacement_text) == expected
++
++    @pytest.mark.parametrize(
++        ["value", "replacement_text", "expected"],
++        [
++            ["a?b", "\\", "a\\b"],
++            ["a?b", "\\b", "a\\bb"],
++            ["a?b", "\\g<0>", "a\\g<0>b"],
++            ["a?b", "\\\\", "a\\\\b"],
++        ],
++    )
++    def test_normal_literal_insertion(self, value, replacement_text, expected):
++        from pathvalidate import sanitize_filename
++
++        assert (
++            sanitize_filename(value, replacement_text=replacement_text, platform="windows")
++            == expected
++        )
++
++    @pytest.mark.parametrize("replacement_text", ["\\", "x\\1", "\\x00"])
++    def test_no_raw_regex_error(self, replacement_text):
++        """A caller-supplied replacement must never raise ``re.error``."""
++        from pathvalidate import sanitize_filename, sanitize_filepath
++
++        sanitize_filename("a?b", replacement_text=replacement_text, platform="windows")
++        sanitize_filepath("a/b?c", replacement_text=replacement_text, platform="windows")
+--- a/test/test_filename.py
++++ b/test/test_filename.py
+@@ -692,6 +692,29 @@
+             assert e.value.reason == ErrorReason.RESERVED_NAME
+ 
+     @pytest.mark.parametrize(
++        ["value", "replacement_word", "expected"],
++        [
++            ["CON.txt", "C:\\x", "C:\\x.txt"],
++            ["CON.txt", "a\\b_", "a\\b_.txt"],
++            ["CON.txt", "\\1", "\\1.txt"],
++            ["CON.txt", "ok_", "ok_.txt"],
++        ],
++    )
++    def test_normal_reserved_name_handler_literal(self, value, replacement_word, expected):
++        """The reserved-name rewrite must insert the handler result literally.
++
++        The handler output used to be passed to ``re.sub`` unescaped, so a backslash
++        in it either raised ``re.error`` or was expanded into another character.
++        """
++
++        def handler(e: ValidationError) -> str:
++            return replacement_word
++
++        assert (
++            sanitize_filename(value, platform="windows", reserved_name_handler=handler) == expected
++        )
++
++    @pytest.mark.parametrize(
+         ["value", "arn", "expected"],
+         [
+             ["abc", [], "abc"],
+--- a/test/test_filepath.py
++++ b/test/test_filepath.py
+@@ -4,6 +4,7 @@
+ .. codeauthor:: Tsuyoshi Hombashi <tsuyoshi.hombashi@gmail.com>
+ """
+ 
++import ntpath
+ import platform as m_platform
+ import random
+ import sys
+@@ -956,3 +957,73 @@
+         with pytest.raises(expected):
+             sanitize_filepath(value)
+         assert not is_valid_filepath(value)
++
++
++class Test_sanitize_filepath_drive_relative:
++    """Drive-relative paths must not be silently turned into absolute paths.
++
++    ``ntpath.splitdrive("C:foo")`` yields ``("C:", "foo")``. Joining the drive back
++    with a separator produced ``"C:\\foo"``, which is absolute: it changes the
++    meaning of the path and, because ``os.path.join`` discards its first argument
++    when the second is absolute, it escapes the directory the caller intended to
++    confine the result to. It also made ``sanitize_filepath`` return a value that
++    ``validate_filepath`` rejects for ``platform="universal"``.
++    """
++
++    @pytest.mark.parametrize(
++        ["value", "platform", "expected"],
++        [
++            ["C:x.txt", "windows", "C:x.txt"],
++            ["C:x.txt", "universal", "C:x.txt"],
++            ["D:payload.exe", "windows", "D:payload.exe"],
++            ["C:.\\y.txt", "windows", "C:y.txt"],
++            ["C:..\\..\\evil.txt", "windows", "C:..\\..\\evil.txt"],
++        ],
++    )
++    def test_normal_drive_relative_stays_relative(self, value, platform, expected):
++        sanitized = sanitize_filepath(value, platform=platform)
++
++        assert sanitized == expected
++        assert not ntpath.isabs(sanitized)
++
++    @pytest.mark.parametrize(
++        ["value", "platform"],
++        [
++            ["C:x.txt", "universal"],
++            ["C:..\\..\\evil.txt", "universal"],
++            ["D:payload.exe", "universal"],
++            ["C:.\\y.txt", "universal"],
++        ],
++    )
++    def test_normal_valid_in_valid_out(self, value, platform):
++        """A path the validator accepts must not be sanitized into a rejected one."""
++        validate_filepath(value, platform=platform)
++
++        sanitized = sanitize_filepath(value, platform=platform)
++
++        validate_filepath(sanitized, platform=platform)
++        assert is_valid_filepath(sanitized, platform=platform)
++
++        # the strict mode must agree with the default mode
++        assert (
++            sanitize_filepath(value, platform=platform, validate_after_sanitize=True) == sanitized
++        )
++
++    @pytest.mark.parametrize(
++        ["value", "platform", "expected"],
++        [
++            ["C:\\x.txt", "windows", "C:\\x.txt"],
++            ["C:/x.txt", "windows", "C:\\x.txt"],
++        ],
++    )
++    def test_normal_absolute_drive_is_unchanged(self, value, platform, expected):
++        """Pre-existing absolute-path behaviour must be preserved."""
++        sanitized = sanitize_filepath(value, platform=platform)
++
++        assert sanitized == expected
++        assert ntpath.isabs(sanitized)
++
++    @pytest.mark.parametrize("value", ["C:\\", "C:/"])
++    def test_normal_drive_root_is_unchanged(self, value):
++        """A bare drive root loses its separator; this predates the fix and is kept."""
++        assert sanitize_filepath(value, platform="windows") == "C:"
+--- a/test/test_ltsv.py
++++ b/test/test_ltsv.py
+@@ -99,3 +99,23 @@
+     def test_abnormal(self, value, expected):
+         with pytest.raises(expected):
+             sanitize_ltsv_label(value)
++
++
++class Test_sanitize_ltsv_label_replacement:
++    """Replacement text must be inserted literally (see escape_replacement_text)."""
++
++    @pytest.mark.parametrize(
++        ["value", "replacement_text", "expected"],
++        [
++            ["a!b", "\\", "a\\b"],
++            ["a!b", "\\b", "a\\bb"],
++            ["a!b", "\\g<0>", "a\\g<0>b"],
++            ["a!b", "_", "a_b"],
++        ],
++    )
++    def test_normal_literal(self, value, replacement_text, expected):
++        assert sanitize_ltsv_label(value, replacement_text) == expected
++
++    @pytest.mark.parametrize("replacement_text", ["\\", "x\\1", "\\x00"])
++    def test_no_raw_regex_error(self, replacement_text):
++        sanitize_ltsv_label("a!b", replacement_text)
+--- a/test/test_symbol.py
++++ b/test/test_symbol.py
+@@ -140,3 +140,59 @@
+         with pytest.raises(ValidationError) as e:
+             validate_unprintable_char(value)
+         assert e.value.reason == ErrorReason.INVALID_CHARACTER
++
++
++class Test_replace_symbol_replacement:
++    """Replacement text must be inserted literally (see escape_replacement_text)."""
++
++    @pytest.mark.parametrize(
++        ["value", "replacement_text", "expected"],
++        [
++            ["a-b", "\\", "a\\b"],
++            ["a-b", "\\b", "a\\bb"],
++            ["a-b", "\\g<0>", "a\\g<0>b"],
++            ["a-b", "_", "a_b"],
++            ["a--b", "\\", "a\\\\b"],
++        ],
++    )
++    def test_normal_literal(self, value, replacement_text, expected):
++        assert replace_symbol(value, replacement_text) == expected
++
++    @pytest.mark.parametrize("replacement_text", ["\\", "x\\1", "\\x00"])
++    def test_no_raw_regex_error(self, replacement_text):
++        replace_symbol("a-b", replacement_text=replacement_text)
++
++    @pytest.mark.parametrize(
++        ["value", "replacement_text", "expected"],
++        [
++            ["a--b", "\\", "a\\b"],
++            ["a--b", "x\\1", "ax\\1b"],
++        ],
++    )
++    def test_normal_consecutive_literal(self, value, replacement_text, expected):
++        assert (
++            replace_symbol(value, replacement_text, is_replace_consecutive_chars=True) == expected
++        )
++
++    @pytest.mark.parametrize(
++        ["value", "replacement_text", "expected"],
++        [
++            # input consists only of symbols, so step 1 yields exactly repl * 3 and
++            # the result isolates the collapse step
++            ["!!!", "ab", "ab"],
++            ["!!!", "aa", "aa"],
++            ["!!!", "a.b", "a.b"],
++            ["!!!", "x\\1", "x\\1"],
++            ["!!", "-", "-"],
++        ],
++    )
++    def test_normal_consecutive_multichar(self, value, replacement_text, expected):
++        """``is_replace_consecutive_chars`` must collapse repeats of a multi-char text.
++
++        The pattern used to be ``f"{re.escape(text)}+"``, so the ``+`` bound to the
++        final character only: ``"ab"`` produced ``"ab+"``, which never matched its own
++        repetition ``"abab"`` and left the repeats in place.
++        """
++        assert (
++            replace_symbol(value, replacement_text, is_replace_consecutive_chars=True) == expected
++        )
