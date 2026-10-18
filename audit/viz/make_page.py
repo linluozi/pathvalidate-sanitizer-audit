@@ -307,6 +307,7 @@ HTML = f"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>pathvalidate 三处静默缺陷 · 审查报告</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1714'/%3E%3Cpath d='M9 7h11l4 4v14H9z' fill='none' stroke='%23d9a13b' stroke-width='2.2' stroke-linejoin='round'/%3E%3Cpath d='M13 16h7M13 20h5' stroke='%23c56a45' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>{CSS}</style>
 </head>
 <body>
